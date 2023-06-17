@@ -99,8 +99,20 @@ rp_for_codigo:
             
             sw 	$t1, instrucao		# guarde o a instrucao completa na memoria
 
+resultado_inicial:
+# este procedimento mostra o endereco de codigo da instrucao lida e a propria em hexadecimal
+	li 	$v0, 34			# mostre o endereco da instrução
+	ll 	$a0, endereco_da_instrucao
+	syscall
+	    
+	li 	$a0, '\t'  # imprima um tab para organizar as informacoes
+	li 	$v0, 11
+	syscall
+	    
+            li      	$v0, 34                 # $v0 <- número do serviço para imprimir um inteiro em hexadecimal
+            ll 	$a0, instrucao	# carregue da memoria o valor da instrucao
+            syscall			# imprimimos o campo
 
-            
 separacao_dos_campos:
 # esta funcao e reponsavel por separar todos os campos de todas as intruces
 	ll 	$t3, instrucao # pegue o conteúdo de instrucao e armazene em St3
@@ -159,7 +171,86 @@ campo_endereco:
 	
 traducao_da_instrucao:
 	# aqui ocorre a tradução da instrucao de linguagem de maquina para assembly
+	ll	$t1, opcode #carregue o valor do opcode
 	
+	li	$t2, 0x00000000 # if opcode == 0x00 é instrucao do tipo r
+	beq	$t1, $t2, instrucao_do_tipo_r
+	
+	li	$t2, 0x00000002 # if opcode == 0x02 ou 0x003 é instrucao do tipo j
+	beq	$t1, $t2, instrucao_do_tipo_j
+	li	$t2, 0x00000003
+	beq	$t1, $t2, instrucao_do_tipo_j
+	
+	j 	instrucao_do_tipo_i # o resto é instrucoa do tipo i
+	
+instrucao_do_tipo_r:
+	ll	$t2, funct 	#pegue da memória o campo funct
+	
+	if_add:
+		beq 	$t2, 0x20, add_instruction     # funct 0x20 - add
+	else_if_sub:
+    		beq 	$t2, 0x22, sub_instruction     # funct 0x22 - sub
+    	else_if_and:
+    		beq 	$t2, 0x24, and_instruction     # funct 0x24 - and
+    	else_if_or:
+    		beq 	$t2, 0x25, or_instruction      # funct 0x25 - or
+    	else_if_nor:
+    		beq 	$t2, 0x27, nor_instruction     # funct 0x27 - nor
+    	else_if_sll:
+    		beq 	$t2, 0x00, sll_instruction     # funct 0x00 - sll
+    	else_if_srl:
+    		beq 	$t2, 0x02, srl_instruction     # funct 0x02 - srl
+    	else_if_sçt:
+    		beq 	$t2, 0x2a, slt_instruction     # funct 0x2a - slt
+    	else_if_jr:
+    		beq 	$t2, 0x08, jr_instruction      # funct 0x08 - jr
+    	else_instrucao_desconhecida:
+    		j	instrucao_desconhecida
+
+instrucao_do_tipo_j:
+	ll	$t2, opcode	# carregue da memória o campo opcode
+	
+	if_j:
+	    	beq 	$t2, 0x02, j_instruction       # opcode 0x02 - j
+	else_if_jal:
+    		beq 	$t2, 0x03, jal_instruction     # opcode 0x03 - jal
+	else_instrucao_desconhecida:
+    		j	instrucao_desconhecida
+	
+instrucao_do_tipo_i:
+	ll	$t2, opcode # carregue da memória o campo opcode
+	
+	if_beq:
+		beq 	$t2, 0x04, beq_instruction     # opcode 0x04 - beq
+	else_if_bne:
+    		beq 	$t2, 0x05, bne_instruction     # opcode 0x05 - bne
+    	else_if_lw:
+    		beq 	$t2, 0x23, lw_instruction      # opcode 0x23 - lw
+    	else_if_sw:
+    		beq 	$t2, 0x2b, sw_instruction      # opcode 0x2b - sw
+    	else_if_lui:
+    		beq 	$t2, 0x0f, lui_instruction     # opcode 0x0f - lui
+    	else_if_andi:
+    		beq 	$t2, 0x0c, andi_instruction    # opcode 0x0c - andi
+    	else_if_ori:
+    		beq 	$t2, 0x0d, ori_instruction     # opcode 0x0d - ori
+    	else_if_slti:
+    		beq 	$t2, 0x0a, slti_instruction    # opcode 0x0a - slti
+    	else_if_sltiu:
+    		beq 	$t2, 0x0b, sltiu_instruction   # opcode 0x0b - sltiu
+        	else_instrucao_desconhecida:
+    		j	instrucao_desconhecida
+
+
+instrucao_desconhecida:
+	la	$a0, str_instrucao_desconhecida
+	li	$v0, 4
+	syscall 
+	
+	j	rp_for_incremento
+add_instruction: 
+	li	$a0, 
+
 resultado:
 # este procedimento mostra o endereco da instrucao lida, e ela propria em hexadecimal
 	li 	$v0, 34			#mostre o endereco da instrução
@@ -171,11 +262,11 @@ resultado:
 	syscall
 	    
             li      	$v0, 34                 # $v0 <- número do serviço para imprimir um inteiro em hexadecimal
-            ll 	$a0, instrucao
-            syscall                         # imprimimos o campo
+            ll 	$a0, instrucao	# carregue da memoria o valor da instrucao
+            syscall			# imprimimos o campo
             
             # aqui deve ser mostrado a instrução em assembly
-            
+	
             # pulamos a linha
             li      	$a0, '\n'               # $a0 <- nova linha
             li      	$v0, 11                 # $v0 <- serviço para imprimir um caractere
@@ -185,9 +276,9 @@ rp_for_incremento:
 # faca o ingcremento das variaveis do laco for
             addiu   	$s0, $s0, 4             # incrementamos o número do campo
             
-            ll      	$s7, endereco_da_instrucao	# incrementamos o endereco do programa
-            add 	$s7, $s7, 4
-            sw 	$s7, endereco_da_instrucao
+            ll      	$s1, endereco_da_instrucao	# incrementamos o endereco do programa, que inicia em 0x00400000
+            add 	$s1, $s1, 4
+            sw 	$s1, endereco_da_instrucao
             
 rp_for_condicao:
 # teste a condicao do laco de repeticao
@@ -195,7 +286,7 @@ rp_for_condicao:
             bne     	$t0, $zero, rp_for_codigo # apresenta o campo
             
 # epílogo
-            lw	    $s0, 0($sp)             # restauramos $s0
+            lw	$s0, 0($sp)             # restauramos $s0
             lw      	$ra, 4($sp)             # restauramos o endereço de retorno
             addiu  	$sp, $sp, 12            # restauramos a pilha
             jr	$ra                     # retorna ao processo chamador
@@ -253,6 +344,7 @@ main_if_leitura_registro_erro:
             la      	$a0, str_erro_leitura_registro  # $a0 <- endereço da string com a mensagem de erro
             li      	$v0, 4                  # $v0 <- serviço 4: imprime uma string
             syscall                         # imprimimos a mensagem de erro
+            
             li      	$v0, 1                  # $v0 <- 1, valor de retorno indicando erro no programa
             bne     	$t0, $zero, fim_leitura_registros # encerra o procedimento mais       
                  
@@ -266,7 +358,7 @@ main_while_verifica_condicao:
             bne     	$v0, $zero, main_while_codigo # se não chegamos ao final do arquivo, processamos o registro
             
 fim_leitura_registros:
-# fechaamento do arquivo quanado terminar o programa
+# fechamento do arquivo quanado terminar o programa
             la      	$t0, descritor_arquivo  # $t0 <- endereço do descritor do arquivo
             lw      	$a0, 0($t0)             # $a0 <- descritor do arquivo
             jal     	arquivo_fechar          # fechamos o arquivo
@@ -290,6 +382,7 @@ buffer_escrita: 	.space 32
 
 str_erro_abertura_arquivo: .asciiz "[ERRO] O arquivo não pôde ser aberto\n"
 str_erro_leitura_registro: .asciiz "[ERRO] Erro de leitura do arquivo\n"
+str_instrucao_desconhecida: .asciiz "[ERRO] Erro instrucão desconhecida\n"
 
 campos_mascaras:
 mascara_ID: 	.word 0xFF000000                    # 0
@@ -340,6 +433,34 @@ gp:		.asciiz "$gp "
 sp:		.asciiz "$sp "
 fp:		.asciiz "$fp "
 ra:		.asciiz "$ra "
+
+
+add:    		.asciiz "add "
+sub:    		.asciiz "sub "
+and:    		.asciiz "and "
+or:     		.asciiz "or "
+nor:    		.asciiz "nor "
+sll:    		.asciiz "sll "
+srl:    		.asciiz "srl "
+slt:    		.asciiz "slt "
+jr:     		.asciiz "jr "
+beq:    		.asciiz "beq "
+bne:    		.asciiz "bne "
+lw:     		.asciiz "lw "
+sw:     		.asciiz "sw "
+lui:    		.asciiz "lui "
+andi:   		.asciiz "andi "
+ori:    		.asciiz "ori "
+slti:   		.asciiz "slti "
+sltiu:  		.asciiz "sltiu "
+j:      		.asciiz "j "
+jal:    		.asciiz "jal "
+
+
+
+
+
+
 
 
 

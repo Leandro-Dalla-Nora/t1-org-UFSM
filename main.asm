@@ -167,6 +167,14 @@ campo_endereco:
 # separa os 26 bits do endereco e calcula ele 
 	li 	$t1, 0x03ffffff #criar uma mascara para separar endereco
 	and	$t2, $t3, $t1 # separando os bits
+	sll	$t2, $t2, 2 # adicionando 2 bits a esquerada
+	
+	ll	$t4, endereco_da_instrucao # carregue o valor de pc
+	addi	$t4, $t4, 4 # some 4
+	andi	$t4, $t4, 0xF0000000 # pegue os 4 bits mais significativos
+	
+	or	$t2, $t2, $t4 # decubra o valor do campo endereco
+	
 	sw 	$t2, endereco_imediato # guarde na memoria
 	
 traducao_da_instrucao:
@@ -185,92 +193,230 @@ traducao_da_instrucao:
 	
 instrucao_do_tipo_r:
 	ll	$t2, funct 	#pegue da memória o campo funct
+	li	$t9, 1 # 1 = instrucao tipo r
 	
 	if_add:
-		beq 	$t2, 0x20, add_instruction     # funct 0x20 - add
+		beq 	$t2, 0x20, add_printar     # funct 0x20 - add
 	else_if_sub:
-    		beq 	$t2, 0x22, sub_instruction     # funct 0x22 - sub
+    		beq 	$t2, 0x22, sub_printar     # funct 0x22 - sub
     	else_if_and:
-    		beq 	$t2, 0x24, and_instruction     # funct 0x24 - and
+    		beq 	$t2, 0x24, and_printar     # funct 0x24 - and
     	else_if_or:
-    		beq 	$t2, 0x25, or_instruction      # funct 0x25 - or
+    		beq 	$t2, 0x25, or_printar      # funct 0x25 - or
     	else_if_nor:
-    		beq 	$t2, 0x27, nor_instruction     # funct 0x27 - nor
+    		beq 	$t2, 0x27, nor_printar     # funct 0x27 - nor
     	else_if_sll:
-    		beq 	$t2, 0x00, sll_instruction     # funct 0x00 - sll
+    		beq 	$t2, 0x00, sll_printar     # funct 0x00 - sll
     	else_if_srl:
-    		beq 	$t2, 0x02, srl_instruction     # funct 0x02 - srl
+    		beq 	$t2, 0x02, srl_printar     # funct 0x02 - srl
     	else_if_sçt:
-    		beq 	$t2, 0x2a, slt_instruction     # funct 0x2a - slt
+    		beq 	$t2, 0x2a, slt_printar     # funct 0x2a - slt
     	else_if_jr:
-    		beq 	$t2, 0x08, jr_instruction      # funct 0x08 - jr
+    		beq 	$t2, 0x08, jr_printar      # funct 0x08 - jr
     	else_instrucao_desconhecida:
     		j	instrucao_desconhecida
 
 instrucao_do_tipo_j:
 	ll	$t2, opcode	# carregue da memória o campo opcode
+	li	$t9, 2 # 2 = instrucao tipo j
 	
 	if_j:
-	    	beq 	$t2, 0x02, j_instruction       # opcode 0x02 - j
+	    	beq 	$t2, 0x02, j_printar       # opcode 0x02 - j
 	else_if_jal:
-    		beq 	$t2, 0x03, jal_instruction     # opcode 0x03 - jal
+    		beq 	$t2, 0x03, jal_printar     # opcode 0x03 - jal
 	else_instrucao_desconhecida:
     		j	instrucao_desconhecida
 	
 instrucao_do_tipo_i:
 	ll	$t2, opcode # carregue da memória o campo opcode
+	li	$t9, 3 # 3 = instrucao tipo i
 	
 	if_beq:
-		beq 	$t2, 0x04, beq_instruction     # opcode 0x04 - beq
+		beq 	$t2, 0x04, beq_printar     # opcode 0x04 - beq
 	else_if_bne:
-    		beq 	$t2, 0x05, bne_instruction     # opcode 0x05 - bne
+    		beq 	$t2, 0x05, bne_printar     # opcode 0x05 - bne
     	else_if_lw:
-    		beq 	$t2, 0x23, lw_instruction      # opcode 0x23 - lw
+    		beq 	$t2, 0x23, lw_printar      # opcode 0x23 - lw
     	else_if_sw:
-    		beq 	$t2, 0x2b, sw_instruction      # opcode 0x2b - sw
+    		beq 	$t2, 0x2b, sw_printar      # opcode 0x2b - sw
     	else_if_lui:
-    		beq 	$t2, 0x0f, lui_instruction     # opcode 0x0f - lui
+    		beq 	$t2, 0x0f, lui_printar     # opcode 0x0f - lui
     	else_if_andi:
-    		beq 	$t2, 0x0c, andi_instruction    # opcode 0x0c - andi
+    		beq 	$t2, 0x0c, andi_printar    # opcode 0x0c - andi
     	else_if_ori:
-    		beq 	$t2, 0x0d, ori_instruction     # opcode 0x0d - ori
+    		beq 	$t2, 0x0d, ori_printar     # opcode 0x0d - ori
     	else_if_slti:
-    		beq 	$t2, 0x0a, slti_instruction    # opcode 0x0a - slti
+    		beq 	$t2, 0x0a, slti_printar    # opcode 0x0a - slti
     	else_if_sltiu:
-    		beq 	$t2, 0x0b, sltiu_instruction   # opcode 0x0b - sltiu
+    		beq 	$t2, 0x0b, sltiu_printar   # opcode 0x0b - sltiu
         	else_instrucao_desconhecida:
     		j	instrucao_desconhecida
 
 
-instrucao_desconhecida:
+instrucao_desconhecida: # mostre uma mensagem de erro se a instrucao nao foi reconhecida
 	la	$a0, str_instrucao_desconhecida
 	li	$v0, 4
 	syscall 
 	
 	j	rp_for_incremento
-add_instruction: 
-	li	$a0, 
-
-resultado:
-# este procedimento mostra o endereco da instrucao lida, e ela propria em hexadecimal
-	li 	$v0, 34			#mostre o endereco da instrução
-	ll 	$a0, endereco_da_instrucao
-	syscall
-	    
-	li 	$a0, '\t'  # imprima um tab para organizar as informacoes
-	li 	$v0, 11
-	syscall
-	    
-            li      	$v0, 34                 # $v0 <- número do serviço para imprimir um inteiro em hexadecimal
-            ll 	$a0, instrucao	# carregue da memoria o valor da instrucao
-            syscall			# imprimimos o campo
-            
-            # aqui deve ser mostrado a instrução em assembly
 	
-            # pulamos a linha
-            li      	$a0, '\n'               # $a0 <- nova linha
-            li      	$v0, 11                 # $v0 <- serviço para imprimir um caractere
-            syscall                         # imprimimos uma nova linha.
+add_printar: 
+    	la 	$a0, add_instrucao
+    	li 	$v0, 4
+    	syscall
+    	
+    	j	printar_primeiro_registrador
+
+sub_printar:
+    	la 	$a0, sub_instrucao
+    	li 	$v0, 4
+    	syscall
+
+    	j	printar_primeiro_registrador
+    	
+and_printar:
+    	la 	$a0, and_instrucao
+    	li 	$v0, 4
+    	syscall
+
+    	j	printar_primeiro_registrador
+    	
+or_printar:
+    	la 	$a0, or_instrucao
+    	li 	$v0, 4
+    	syscall
+
+    	j	printar_primeiro_registrador
+    	
+nor_printar:
+    	la 	$a0, nor_instrucao
+    	li 	$v0, 4
+    	syscall
+
+    	j	printar_primeiro_registrador
+    	
+sll_printar:
+    	la 	$a0, sll_instrucao
+    	li 	$v0, 4
+    	syscall
+
+    	j	printar_primeiro_registrador
+    	
+srl_printar:
+    	la 	$a0, srl_instrucao
+    	li 	$v0, 4
+    	syscall
+
+    	j	printar_primeiro_registrador
+    	
+slt_printar:
+    	la 	$a0, slt_instrucao
+    	li 	$v0, 4
+    	syscall
+
+    	j	printar_primeiro_registrador
+    	
+jr_printar:
+    	la 	$a0, jr_instrucao
+    	li 	$v0, 4
+    	syscall
+
+    	j	printar_primeiro_registrador
+    	
+beq_printar:
+	li 	$t9, 4 # 4 para a instrucao beq
+    	la 	$a0, beq_instrucao
+    	li 	$v0, 4
+    	syscall
+
+    	j	printar_primeiro_registrador
+    	
+bne_printar:
+    	la 	$a0, bne_instrucao
+    	li 	$v0, 4
+   	syscall
+
+    	j	printar_primeiro_registrador
+    	
+lw_printar:
+    	la 	$a0, lw_instrucao
+    	li 	$v0, 4
+    	syscall
+
+    	j	printar_primeiro_registrador
+    	
+sw_printar:
+    	la 	$a0, sw_instrucao
+    	li 	$v0, 4
+    	syscall
+
+    	j	printar_primeiro_registrador
+    	
+lui_printar:
+   	la 	$a0, lui_instrucao
+    	li 	$v0, 4
+    	syscall
+
+    	j	printar_primeiro_registrador
+andi_printar:
+    	la 	$a0, andi_instrucao
+    	li 	$v0, 4
+    	syscall
+
+    	j	printar_primeiro_registrador
+    	
+ori_printar:
+    	la 	$a0, ori_instrucao
+    	li 	$v0, 4
+    	syscall
+
+    	j	printar_primeiro_registrador
+slti_printar:
+    	la 	$a0, slti_instrucao
+    	li 	$v0, 4
+    	syscall
+
+    	j	printar_primeiro_registrador
+    	
+sltiu_printar:
+    	la 	$a0, sltiu_instrucao
+    	li 	$v0, 4
+    	syscall
+
+    	j	printar_primeiro_registrador
+    	
+j_printar:
+    	la 	$a0, j_instrucao
+    	li 	$v0, 4
+    	syscall
+
+    	j	printar_endereco
+    	
+jal_printar:
+    	la 	$a0, jal_instrucao
+    	li 	$v0, 4
+    	syscall
+
+    	j	printar_endereco
+
+printar_primeiro_registrador:
+	ll	$t2, rs
+	
+	
+
+segundo_registrador:
+
+terceiro_registrador:
+
+	j	rp_for_incremento
+
+valor_imediato:
+
+	j	rp_for_incremento
+
+endereco:
+
+	j	rp_for_incremento
 	
 rp_for_incremento:
 # faca o ingcremento das variaveis do laco for
@@ -435,26 +581,26 @@ fp:		.asciiz "$fp "
 ra:		.asciiz "$ra "
 
 
-add:    		.asciiz "add "
-sub:    		.asciiz "sub "
-and:    		.asciiz "and "
-or:     		.asciiz "or "
-nor:    		.asciiz "nor "
-sll:    		.asciiz "sll "
-srl:    		.asciiz "srl "
-slt:    		.asciiz "slt "
-jr:     		.asciiz "jr "
-beq:    		.asciiz "beq "
-bne:    		.asciiz "bne "
-lw:     		.asciiz "lw "
-sw:     		.asciiz "sw "
-lui:    		.asciiz "lui "
-andi:   		.asciiz "andi "
-ori:    		.asciiz "ori "
-slti:   		.asciiz "slti "
-sltiu:  		.asciiz "sltiu "
-j:      		.asciiz "j "
-jal:    		.asciiz "jal "
+add_instrucao:	.asciiz "add "
+sub_instrucao:	.asciiz "sub "
+and_instrucao:	.asciiz "and "
+or_instrucao:	.asciiz "or "
+nor_instrucao:	.asciiz "nor "
+sll_instrucao:	.asciiz "sll "
+srl_instrucao:	.asciiz "srl "
+slt_instrucao:	.asciiz "slt "
+jr_instrucao:	.asciiz "jr "
+beq_instrucao:	.asciiz "beq "
+bne_instrucao:	.asciiz "bne "
+lw_instrucao:	.asciiz "lw "
+sw_instrucao:	.asciiz "sw "
+lui_instrucao:	.asciiz "lui "
+andi_instrucao:	.asciiz "andi "
+ori_instrucao:	.asciiz "ori "
+slti_instrucao:	.asciiz "slti "
+sltiu_instrucao:	.asciiz "sltiu "
+j_instrucao:	.asciiz "j "
+jal_instrucao:	.asciiz "jal "
 
 
 

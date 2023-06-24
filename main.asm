@@ -102,7 +102,7 @@ rp_for_codigo:
 resultado_inicial:
 # este procedimento mostra o endereco de codigo da instrucao lida e a propria em hexadecimal
 	li 	$v0, 34			# mostre o endereco da instrução
-	ll 	$a0, endereco_da_instrucao
+	ll 	$a0, pc
 	syscall
 	    
 	li 	$a0, '\t'  # imprima um tab para organizar as informacoes
@@ -112,6 +112,12 @@ resultado_inicial:
             li      	$v0, 34                 # $v0 <- número do serviço para imprimir um inteiro em hexadecimal
             ll 	$a0, instrucao	# carregue da memoria o valor da instrucao
             syscall			# imprimimos o campo
+            
+            li 	$a0, '\t'  # imprima um tab para organizar as informacoes
+	li 	$v0, 11
+	syscall
+
+########################
 
 separacao_dos_campos:
 # esta funcao e reponsavel por separar todos os campos de todas as intruces
@@ -169,14 +175,16 @@ campo_endereco:
 	and	$t2, $t3, $t1 # separando os bits
 	sll	$t2, $t2, 2 # adicionando 2 bits a esquerada
 	
-	ll	$t4, endereco_da_instrucao # carregue o valor de pc
+	ll	$t4, pc # carregue o valor de pc
 	addi	$t4, $t4, 4 # some 4
 	andi	$t4, $t4, 0xF0000000 # pegue os 4 bits mais significativos
 	
 	or	$t2, $t2, $t4 # decubra o valor do campo endereco
 	
 	sw 	$t2, endereco_imediato # guarde na memoria
-	
+
+############################
+
 traducao_da_instrucao:
 	# aqui ocorre a tradução da instrucao de linguagem de maquina para assembly
 	ll	$t1, opcode #carregue o valor do opcode
@@ -193,10 +201,12 @@ traducao_da_instrucao:
 	
 instrucao_do_tipo_r:
 	ll	$t2, funct 	#pegue da memória o campo funct
-	li	$t9, 1 # 1 = instrucao tipo r
+	li	$t9, 1 # 1 = instrucao tipo r. $t9 sera usado para diferenciar cada instrucao, pois altera a ordem dos registradores
 	
 	if_add:
 		beq 	$t2, 0x20, add_printar     # funct 0x20 - add
+	else_if_adddu:
+		beq	$t2, 0x21, addu_printar    # funct 0x21 - addu
 	else_if_sub:
     		beq 	$t2, 0x22, sub_printar     # funct 0x22 - sub
     	else_if_and:
@@ -213,28 +223,32 @@ instrucao_do_tipo_r:
     		beq 	$t2, 0x2a, slt_printar     # funct 0x2a - slt
     	else_if_jr:
     		beq 	$t2, 0x08, jr_printar      # funct 0x08 - jr
+    	else_if_syscall:
+    		beq	$t2, 0x0c, syscall_printar # funct 0x0c - syscall
+    	else_if_mul:
+    		beq	$t2, 0x1c, mul_printar     # funct 0x1c -mul
     	else_instrucao_desconhecida:
     		j	instrucao_desconhecida
 
 instrucao_do_tipo_j:
 	ll	$t2, opcode	# carregue da memória o campo opcode
-	li	$t9, 2 # 2 = instrucao tipo j
 	
 	if_j:
 	    	beq 	$t2, 0x02, j_printar       # opcode 0x02 - j
 	else_if_jal:
     		beq 	$t2, 0x03, jal_printar     # opcode 0x03 - jal
-	else_instrucao_desconhecida:
-    		j	instrucao_desconhecida
-	
+	j	else_instrucao_desconhecida
+    			
 instrucao_do_tipo_i:
 	ll	$t2, opcode # carregue da memória o campo opcode
-	li	$t9, 3 # 3 = instrucao tipo i
+	li	$t9, 2 # 2 = instrucao tipo i
 	
 	if_beq:
 		beq 	$t2, 0x04, beq_printar     # opcode 0x04 - beq
 	else_if_bne:
     		beq 	$t2, 0x05, bne_printar     # opcode 0x05 - bne
+    	else_if_addi:
+    		beq 	$t2, 0x08, addi_printar     # opcode 0x08 - addi	
     	else_if_lw:
     		beq 	$t2, 0x23, lw_printar      # opcode 0x23 - lw
     	else_if_sw:
@@ -249,10 +263,11 @@ instrucao_do_tipo_i:
     		beq 	$t2, 0x0a, slti_printar    # opcode 0x0a - slti
     	else_if_sltiu:
     		beq 	$t2, 0x0b, sltiu_printar   # opcode 0x0b - sltiu
-        	else_instrucao_desconhecida:
-    		j	instrucao_desconhecida
+    	else_if_addiu:
+    		beq	$t2, 0x09, addiu_printar   # opcode 0x09 - addiu
+        	j	else_instrucao_desconhecida
 
-
+#################################
 instrucao_desconhecida: # mostre uma mensagem de erro se a instrucao nao foi reconhecida
 	la	$a0, str_instrucao_desconhecida
 	li	$v0, 4
@@ -265,125 +280,154 @@ add_printar:
     	li 	$v0, 4
     	syscall
     	
-    	j	printar_primeiro_registrador
+    	j	printar_registradores
 
+addiu_printar:
+	la 	$a0, addiu_instrucao
+    	li 	$v0, 4
+    	syscall
+    	
+    	j	printar_registradores
+addu_printar:
+	la 	$a0, addu_instrucao
+    	li 	$v0, 4
+    	syscall
+    	
+    	j	printar_registradores
+addi_printar:
+	la 	$a0, addi_instrucao
+    	li 	$v0, 4
+    	syscall
+    	
+    	j	printar_registradores
+    	
 sub_printar:
     	la 	$a0, sub_instrucao
     	li 	$v0, 4
     	syscall
 
-    	j	printar_primeiro_registrador
+    	j	printar_registradores
     	
 and_printar:
     	la 	$a0, and_instrucao
     	li 	$v0, 4
     	syscall
 
-    	j	printar_primeiro_registrador
+    	j	printar_registradores
     	
 or_printar:
     	la 	$a0, or_instrucao
     	li 	$v0, 4
     	syscall
 
-    	j	printar_primeiro_registrador
+    	j	printar_registradores
     	
 nor_printar:
     	la 	$a0, nor_instrucao
     	li 	$v0, 4
     	syscall
 
-    	j	printar_primeiro_registrador
+    	j	printar_registradores
     	
+mul_printar:
+    	la 	$a0, mul_instrucao 
+    	li 	$v0, 4
+    	syscall
+
+    	j	printar_registradores
+	
 sll_printar:
     	la 	$a0, sll_instrucao
     	li 	$v0, 4
     	syscall
 
-    	j	printar_primeiro_registrador
+    	j	printar_registradores
     	
 srl_printar:
     	la 	$a0, srl_instrucao
     	li 	$v0, 4
     	syscall
 
-    	j	printar_primeiro_registrador
+    	j	printar_registradores
     	
 slt_printar:
     	la 	$a0, slt_instrucao
     	li 	$v0, 4
     	syscall
 
-    	j	printar_primeiro_registrador
+    	j	printar_registradores
     	
 jr_printar:
+	li	$t9, 3 # para a instrucao jr
+	
     	la 	$a0, jr_instrucao
     	li 	$v0, 4
     	syscall
 
-    	j	printar_primeiro_registrador
+    	j	printar_registradores
     	
 beq_printar:
-	li 	$t9, 4 # 4 para a instrucao beq
+	li 	$t9, 4 # para a instrucao beq ou bne
+	
     	la 	$a0, beq_instrucao
     	li 	$v0, 4
     	syscall
 
-    	j	printar_primeiro_registrador
+    	j	printar_registradores
     	
 bne_printar:
     	la 	$a0, bne_instrucao
     	li 	$v0, 4
    	syscall
 
-    	j	printar_primeiro_registrador
+    	j	printar_registradores
     	
 lw_printar:
     	la 	$a0, lw_instrucao
     	li 	$v0, 4
     	syscall
 
-    	j	printar_primeiro_registrador
+    	j	printar_registradores
     	
 sw_printar:
     	la 	$a0, sw_instrucao
     	li 	$v0, 4
     	syscall
 
-    	j	printar_primeiro_registrador
+    	j	printar_registradores
     	
 lui_printar:
    	la 	$a0, lui_instrucao
     	li 	$v0, 4
     	syscall
 
-    	j	printar_primeiro_registrador
+    	j	printar_registradores
 andi_printar:
     	la 	$a0, andi_instrucao
     	li 	$v0, 4
     	syscall
 
-    	j	printar_primeiro_registrador
+    	j	printar_registradores
     	
 ori_printar:
     	la 	$a0, ori_instrucao
     	li 	$v0, 4
     	syscall
 
-    	j	printar_primeiro_registrador
+    	j	printar_registradores
 slti_printar:
     	la 	$a0, slti_instrucao
     	li 	$v0, 4
     	syscall
 
-    	j	printar_primeiro_registrador
+    	j	printar_registradores
     	
 sltiu_printar:
     	la 	$a0, sltiu_instrucao
     	li 	$v0, 4
     	syscall
 
-    	j	printar_primeiro_registrador
+    	j	printar_registradores
     	
 j_printar:
     	la 	$a0, j_instrucao
@@ -398,33 +442,575 @@ jal_printar:
     	syscall
 
     	j	printar_endereco
+    	
+syscall_printar:
+	la 	$a0, syscall_instrucao
+    	li 	$v0, 4
+    	syscall
 
-printar_primeiro_registrador:
-	ll	$t2, rs
+    	j	rp_for_incremento
+    	
+
+################################
+printar_registradores:
+	beq	$t9, 1, printar_registrador_instrucao_tipo_r # caso seja uma instrucao tipo r, vai printar rd, rs, rt
+	beq	$t9, 2, printar_registrador_instrucao_tipo_i # caso seja uma instrucao tipo i, vai printar rs, rt
+	beq	$t9, 2, printar_instrucao_jr # caso seja a instucao jr, vai printar rs
+	beq	$t9, 4, printar_instrucao_beq_ou_bne # caso seja a instucao, vai printar rt, imn, rs
+	j	instrucao_desconhecida
 	
+	printar_registrador_instrucao_tipo_r:
+		ll	$v0, rd #printe o primeiro registrador da instrucao do tipo r		
+
+		beq	$t8, 0, zero_printar		# if $t8 == $zero
+		beq	$t8, 1, at_printar		# if $t8 == $at
+		beq	$t8, 2, v0_printar		# if $t8 == $v0
+		beq	$t8, 3, v1_printar		# if $t8 == $v1
+		beq	$t8, 4, a0_printar		# if $t8 == $a0
+		beq	$t8, 5, a1_printar		# if $t8 == $a1
+		beq	$t8, 6, a2_printar		# if $t8 == $a2
+		beq	$t8, 7, a3_printar		# if $t8 == $a3
+		beq	$t8, 8, t0_printar		# if $t8 == $t0
+		beq	$t8, 9, t1_printar		# if $t8 == $t1
+		beq	$t8, 10, t2_printar		# if $t8 == $t2
+		beq	$t8, 11, t3_printar		# if $t8 == $t3
+		beq	$t8, 12, t4_printar		# if $t8 == $t4
+		beq	$t8, 13, t5_printar		# if $t8 == $t5
+		beq	$t8, 14, t6_printar		# if $t8 == $t6
+		beq	$t8, 15, t7_printar		# if $t8 == $t7
+		beq	$t8, 16, s0_printar		# if $t8 == $s0
+		beq	$t8, 17, s1_printar		# if $t8 == $s1
+		beq	$t8, 18, s2_printar		# if $t8 == $s2
+		beq	$t8, 19, s3_printar		# if $t8 == $s3
+		beq	$t8, 20, s4_printar		# if $t8 == $s4
+		beq	$t8, 21, s5_printar		# if $t8 == $s5
+		beq	$t8, 22, s6_printar		# if $t8 == $s6
+		beq	$t8, 23, s7_printar		# if $t8 == $s7
+		beq	$t8, 24, t8_printar		# if $t8 == $t8
+		beq	$t8, 25, t9_printar		# if $t8 == $t9
+		beq	$t8, 26, k0_printar		# if $t8 == $k0
+		beq	$t8, 27, k1_printar		# if $t8 == $k1
+		beq	$t8, 28, gp_printar		# if $t8 == $gp
+		beq	$t8, 29, sp_printar		# if $t8 == $sp
+		beq	$t8, 30, fp_printar		# if $t8 == $fp
+		beq	$t8, 31, ra_printar		# if $t8 == $ra
+				
+		ll	$t8, rs #printe o segundo registrador da instrucao do tipo r
+		
+		beq	$t8, 0, zero_printar		# if $t8 == $zero
+		beq	$t8, 1, at_printar		# if $t8 == $at
+		beq	$t8, 2, v0_printar		# if $t8 == $v0
+		beq	$t8, 3, v1_printar		# if $t8 == $v1
+		beq	$t8, 4, a0_printar		# if $t8 == $a0
+		beq	$t8, 5, a1_printar		# if $t8 == $a1
+		beq	$t8, 6, a2_printar		# if $t8 == $a2
+		beq	$t8, 7, a3_printar		# if $t8 == $a3
+		beq	$t8, 8, t0_printar		# if $t8 == $t0
+		beq	$t8, 9, t1_printar		# if $t8 == $t1
+		beq	$t8, 10, t2_printar		# if $t8 == $t2
+		beq	$t8, 11, t3_printar		# if $t8 == $t3
+		beq	$t8, 12, t4_printar		# if $t8 == $t4
+		beq	$t8, 13, t5_printar		# if $t8 == $t5
+		beq	$t8, 14, t6_printar		# if $t8 == $t6
+		beq	$t8, 15, t7_printar		# if $t8 == $t7
+		beq	$t8, 16, s0_printar		# if $t8 == $s0
+		beq	$t8, 17, s1_printar		# if $t8 == $s1
+		beq	$t8, 18, s2_printar		# if $t8 == $s2
+		beq	$t8, 19, s3_printar		# if $t8 == $s3
+		beq	$t8, 20, s4_printar		# if $t8 == $s4
+		beq	$t8, 21, s5_printar		# if $t8 == $s5
+		beq	$t8, 22, s6_printar		# if $t8 == $s6
+		beq	$t8, 23, s7_printar		# if $t8 == $s7
+		beq	$t8, 24, t8_printar		# if $t8 == $t8
+		beq	$t8, 25, t9_printar		# if $t8 == $t9
+		beq	$t8, 26, k0_printar		# if $t8 == $k0
+		beq	$t8, 27, k1_printar		# if $t8 == $k1
+		beq	$t8, 28, gp_printar		# if $t8 == $gp
+		beq	$t8, 29, sp_printar		# if $t8 == $sp
+		beq	$t8, 30, fp_printar		# if $t8 == $fp
+		beq	$t8, 31, ra_printar		# if $t8 == $ra
+			
+		ll	$t8, rt #printe o terceiro registrador da instrucao do tipo r
+		
+		beq	$t8, 0, zero_printar		# if $t8 == $zero
+		beq	$t8, 1, at_printar		# if $t8 == $at
+		beq	$t8, 2, v0_printar		# if $t8 == $v0
+		beq	$t8, 3, v1_printar		# if $t8 == $v1
+		beq	$t8, 4, a0_printar		# if $t8 == $a0
+		beq	$t8, 5, a1_printar		# if $t8 == $a1
+		beq	$t8, 6, a2_printar		# if $t8 == $a2
+		beq	$t8, 7, a3_printar		# if $t8 == $a3
+		beq	$t8, 8, t0_printar		# if $t8 == $t0
+		beq	$t8, 9, t1_printar		# if $t8 == $t1
+		beq	$t8, 10, t2_printar		# if $t8 == $t2
+		beq	$t8, 11, t3_printar		# if $t8 == $t3
+		beq	$t8, 12, t4_printar		# if $t8 == $t4
+		beq	$t8, 13, t5_printar		# if $t8 == $t5
+		beq	$t8, 14, t6_printar		# if $t8 == $t6
+		beq	$t8, 15, t7_printar		# if $t8 == $t7
+		beq	$t8, 16, s0_printar		# if $t8 == $s0
+		beq	$t8, 17, s1_printar		# if $t8 == $s1
+		beq	$t8, 18, s2_printar		# if $t8 == $s2
+		beq	$t8, 19, s3_printar		# if $t8 == $s3
+		beq	$t8, 20, s4_printar		# if $t8 == $s4
+		beq	$t8, 21, s5_printar		# if $t8 == $s5
+		beq	$t8, 22, s6_printar		# if $t8 == $s6
+		beq	$t8, 23, s7_printar		# if $t8 == $s7
+		beq	$t8, 24, t8_printar		# if $t8 == $t8
+		beq	$t8, 25, t9_printar		# if $t8 == $t9
+		beq	$t8, 26, k0_printar		# if $t8 == $k0
+		beq	$t8, 27, k1_printar		# if $t8 == $k1
+		beq	$t8, 28, gp_printar		# if $t8 == $gp
+		beq	$t8, 29, sp_printar		# if $t8 == $sp
+		beq	$t8, 30, fp_printar		# if $t8 == $fp
+		beq	$t8, 31, ra_printar		# if $t8 == $ra
+		
+		li	$a0, 10 #imprimma \n
+		li	$v0, 11
+		syscall
+		
+			
+	printar_registrador_instrucao_tipo_i:
+		ll	$t8, rt # printe o primeiro registrador da instrução do tipo i
+		
+		beq	$t8, 0, zero_printar		# if $t8 == $zero
+		beq	$t8, 1, at_printar		# if $t8 == $at
+		beq	$t8, 2, v0_printar		# if $t8 == $v0
+		beq	$t8, 3, v1_printar		# if $t8 == $v1
+		beq	$t8, 4, a0_printar		# if $t8 == $a0
+		beq	$t8, 5, a1_printar		# if $t8 == $a1
+		beq	$t8, 6, a2_printar		# if $t8 == $a2
+		beq	$t8, 7, a3_printar		# if $t8 == $a3
+		beq	$t8, 8, t0_printar		# if $t8 == $t0
+		beq	$t8, 9, t1_printar		# if $t8 == $t1
+		beq	$t8, 10, t2_printar		# if $t8 == $t2
+		beq	$t8, 11, t3_printar		# if $t8 == $t3
+		beq	$t8, 12, t4_printar		# if $t8 == $t4
+		beq	$t8, 13, t5_printar		# if $t8 == $t5
+		beq	$t8, 14, t6_printar		# if $t8 == $t6
+		beq	$t8, 15, t7_printar		# if $t8 == $t7
+		beq	$t8, 16, s0_printar		# if $t8 == $s0
+		beq	$t8, 17, s1_printar		# if $t8 == $s1
+		beq	$t8, 18, s2_printar		# if $t8 == $s2
+		beq	$t8, 19, s3_printar		# if $t8 == $s3
+		beq	$t8, 20, s4_printar		# if $t8 == $s4
+		beq	$t8, 21, s5_printar		# if $t8 == $s5
+		beq	$t8, 22, s6_printar		# if $t8 == $s6
+		beq	$t8, 23, s7_printar		# if $t8 == $s7
+		beq	$t8, 24, t8_printar		# if $t8 == $t8
+		beq	$t8, 25, t9_printar		# if $t8 == $t9
+		beq	$t8, 26, k0_printar		# if $t8 == $k0
+		beq	$t8, 27, k1_printar		# if $t8 == $k1
+		beq	$t8, 28, gp_printar		# if $t8 == $gp
+		beq	$t8, 29, sp_printar		# if $t8 == $sp
+		beq	$t8, 30, fp_printar		# if $t8 == $fp
+		beq	$t8, 31, ra_printar		# if $t8 == $ra
+		
+		la	$a0, abre_parenteses # imprima (
+		li	$v0, 4
+		syscall
+		
+		jal	printar_valor_imediato
+		
+		ll	$t8, rs #printe o segundo registrador da instrução tipo i
+		
+		beq	$t8, 0, zero_printar		# if $t8 == $zero
+		beq	$t8, 1, at_printar		# if $t8 == $at
+		beq	$t8, 2, v0_printar		# if $t8 == $v0
+		beq	$t8, 3, v1_printar		# if $t8 == $v1
+		beq	$t8, 4, a0_printar		# if $t8 == $a0
+		beq	$t8, 5, a1_printar		# if $t8 == $a1
+		beq	$t8, 6, a2_printar		# if $t8 == $a2
+		beq	$t8, 7, a3_printar		# if $t8 == $a3
+		beq	$t8, 8, t0_printar		# if $t8 == $t0
+		beq	$t8, 9, t1_printar		# if $t8 == $t1
+		beq	$t8, 10, t2_printar		# if $t8 == $t2
+		beq	$t8, 11, t3_printar		# if $t8 == $t3
+		beq	$t8, 12, t4_printar		# if $t8 == $t4
+		beq	$t8, 13, t5_printar		# if $t8 == $t5
+		beq	$t8, 14, t6_printar		# if $t8 == $t6
+		beq	$t8, 15, t7_printar		# if $t8 == $t7
+		beq	$t8, 16, s0_printar		# if $t8 == $s0
+		beq	$t8, 17, s1_printar		# if $t8 == $s1
+		beq	$t8, 18, s2_printar		# if $t8 == $s2
+		beq	$t8, 19, s3_printar		# if $t8 == $s3
+		beq	$t8, 20, s4_printar		# if $t8 == $s4
+		beq	$t8, 21, s5_printar		# if $t8 == $s5
+		beq	$t8, 22, s6_printar		# if $t8 == $s6
+		beq	$t8, 23, s7_printar		# if $t8 == $s7
+		beq	$t8, 24, t8_printar		# if $t8 == $t8
+		beq	$t8, 25, t9_printar		# if $t8 == $t9
+		beq	$t8, 26, k0_printar		# if $t8 == $k0
+		beq	$t8, 27, k1_printar		# if $t8 == $k1
+		beq	$t8, 28, gp_printar		# if $t8 == $gp
+		beq	$t8, 29, sp_printar		# if $t8 == $sp
+		beq	$t8, 30, fp_printar		# if $t8 == $fp
+		beq	$t8, 31, ra_printar		# if $t8 == $ra
+		
+		la	$a0, fecha_parenteses # imprima )
+		li	$v0, 4
+		syscall
+		
+		li	$a0, 10 #imprimma \n
+		li	$v0, 11
+		syscall
+		
+
+	printar_instrucao_jr:
+		ll	$t8, rs # imprima o registrador da instrucao jr
+		
+		beq	$t8, 0, zero_printar		# if $t8 == $zero
+		beq	$t8, 1, at_printar		# if $t8 == $at
+		beq	$t8, 2, v0_printar		# if $t8 == $v0
+		beq	$t8, 3, v1_printar		# if $t8 == $v1
+		beq	$t8, 4, a0_printar		# if $t8 == $a0
+		beq	$t8, 5, a1_printar		# if $t8 == $a1
+		beq	$t8, 6, a2_printar		# if $t8 == $a2
+		beq	$t8, 7, a3_printar		# if $t8 == $a3
+		beq	$t8, 8, t0_printar		# if $t8 == $t0
+		beq	$t8, 9, t1_printar		# if $t8 == $t1
+		beq	$t8, 10, t2_printar		# if $t8 == $t2
+		beq	$t8, 11, t3_printar		# if $t8 == $t3
+		beq	$t8, 12, t4_printar		# if $t8 == $t4
+		beq	$t8, 13, t5_printar		# if $t8 == $t5
+		beq	$t8, 14, t6_printar		# if $t8 == $t6
+		beq	$t8, 15, t7_printar		# if $t8 == $t7
+		beq	$t8, 16, s0_printar		# if $t8 == $s0
+		beq	$t8, 17, s1_printar		# if $t8 == $s1
+		beq	$t8, 18, s2_printar		# if $t8 == $s2
+		beq	$t8, 19, s3_printar		# if $t8 == $s3
+		beq	$t8, 20, s4_printar		# if $t8 == $s4
+		beq	$t8, 21, s5_printar		# if $t8 == $s5
+		beq	$t8, 22, s6_printar		# if $t8 == $s6
+		beq	$t8, 23, s7_printar		# if $t8 == $s7
+		beq	$t8, 24, t8_printar		# if $t8 == $t8
+		beq	$t8, 25, t9_printar		# if $t8 == $t9
+		beq	$t8, 26, k0_printar		# if $t8 == $k0
+		beq	$t8, 27, k1_printar		# if $t8 == $k1
+		beq	$t8, 28, gp_printar		# if $t8 == $gp
+		beq	$t8, 29, sp_printar		# if $t8 == $sp
+		beq	$t8, 30, fp_printar		# if $t8 == $fp
+		beq	$t8, 31, ra_printar		# if $t8 == $ra
+		
+		li	$a0, 10 #imprimma \n
+		li	$v0, 11
+		syscall
+		
+		j	rp_for_incremento
+		
+	printar_instrucao_beq_ou_bne:
+		ll	$t8, rs # printe o primeiro registrador da instrução beq
+		
+		beq	$t8, 0, zero_printar		# if $t8 == $zero
+		beq	$t8, 1, at_printar		# if $t8 == $at
+		beq	$t8, 2, v0_printar		# if $t8 == $v0
+		beq	$t8, 3, v1_printar		# if $t8 == $v1
+		beq	$t8, 4, a0_printar		# if $t8 == $a0
+		beq	$t8, 5, a1_printar		# if $t8 == $a1
+		beq	$t8, 6, a2_printar		# if $t8 == $a2
+		beq	$t8, 7, a3_printar		# if $t8 == $a3
+		beq	$t8, 8, t0_printar		# if $t8 == $t0
+		beq	$t8, 9, t1_printar		# if $t8 == $t1
+		beq	$t8, 10, t2_printar		# if $t8 == $t2
+		beq	$t8, 11, t3_printar		# if $t8 == $t3
+		beq	$t8, 12, t4_printar		# if $t8 == $t4
+		beq	$t8, 13, t5_printar		# if $t8 == $t5
+		beq	$t8, 14, t6_printar		# if $t8 == $t6
+		beq	$t8, 15, t7_printar		# if $t8 == $t7
+		beq	$t8, 16, s0_printar		# if $t8 == $s0
+		beq	$t8, 17, s1_printar		# if $t8 == $s1
+		beq	$t8, 18, s2_printar		# if $t8 == $s2
+		beq	$t8, 19, s3_printar		# if $t8 == $s3
+		beq	$t8, 20, s4_printar		# if $t8 == $s4
+		beq	$t8, 21, s5_printar		# if $t8 == $s5
+		beq	$t8, 22, s6_printar		# if $t8 == $s6
+		beq	$t8, 23, s7_printar		# if $t8 == $s7
+		beq	$t8, 24, t8_printar		# if $t8 == $t8
+		beq	$t8, 25, t9_printar		# if $t8 == $t9
+		beq	$t8, 26, k0_printar		# if $t8 == $k0
+		beq	$t8, 27, k1_printar		# if $t8 == $k1
+		beq	$t8, 28, gp_printar		# if $t8 == $gp
+		beq	$t8, 29, sp_printar		# if $t8 == $sp
+		beq	$t8, 30, fp_printar		# if $t8 == $fp
+		beq	$t8, 31, ra_printar		# if $t8 == $ra
+		
+		ll	$t8, rt # printe o segundo registrador da instrução beq
+		
+		beq	$t8, 0, zero_printar		# if $t8 == $zero
+		beq	$t8, 1, at_printar		# if $t8 == $at
+		beq	$t8, 2, v0_printar		# if $t8 == $v0
+		beq	$t8, 3, v1_printar		# if $t8 == $v1
+		beq	$t8, 4, a0_printar		# if $t8 == $a0
+		beq	$t8, 5, a1_printar		# if $t8 == $a1
+		beq	$t8, 6, a2_printar		# if $t8 == $a2
+		beq	$t8, 7, a3_printar		# if $t8 == $a3
+		beq	$t8, 8, t0_printar		# if $t8 == $t0
+		beq	$t8, 9, t1_printar		# if $t8 == $t1
+		beq	$t8, 10, t2_printar		# if $t8 == $t2
+		beq	$t8, 11, t3_printar		# if $t8 == $t3
+		beq	$t8, 12, t4_printar		# if $t8 == $t4
+		beq	$t8, 13, t5_printar		# if $t8 == $t5
+		beq	$t8, 14, t6_printar		# if $t8 == $t6
+		beq	$t8, 15, t7_printar		# if $t8 == $t7
+		beq	$t8, 16, s0_printar		# if $t8 == $s0
+		beq	$t8, 17, s1_printar		# if $t8 == $s1
+		beq	$t8, 18, s2_printar		# if $t8 == $s2
+		beq	$t8, 19, s3_printar		# if $t8 == $s3
+		beq	$t8, 20, s4_printar		# if $t8 == $s4
+		beq	$t8, 21, s5_printar		# if $t8 == $s5
+		beq	$t8, 22, s6_printar		# if $t8 == $s6
+		beq	$t8, 23, s7_printar		# if $t8 == $s7
+		beq	$t8, 24, t8_printar		# if $t8 == $t8
+		beq	$t8, 25, t9_printar		# if $t8 == $t9
+		beq	$t8, 26, k0_printar		# if $t8 == $k0
+		beq	$t8, 27, k1_printar		# if $t8 == $k1
+		beq	$t8, 28, gp_printar		# if $t8 == $gp
+		beq	$t8, 29, sp_printar		# if $t8 == $sp
+		beq	$t8, 30, fp_printar		# if $t8 == $fp
+		beq	$t8, 31, ra_printar		# if $t8 == $ra
+		
+		jal	printar_endereco_beq
+		
+		j	rp_for_incremento
+
+printar_valor_imediato:
+	la	$a0, valor_imediato
+	li	$v0, 34
+	syscall
 	
+	la	$a0, abre_parenteses
+	li	$v0, 4
+	syscall
+	
+	jr 	$ra
 
-segundo_registrador:
+printar_endereco_beq:
+	ll	$t7, valor_imediato
+	sll 	$t7, $t7, 2 # desloque 2 bits a esquerda do valor imediato
+	
+	ll	$t6, pc
+	add	$t6, $t6, 4 #some 4 ao pc	
+	
+	li	$a0, 10 #imprimma \n
+	li	$v0, 11
+	syscall
+	
+	jr	$ra
 
-terceiro_registrador:
-
+printar_endereco:
+	ll	$a0, endereco_imediato
+	li	$v0, 34
+	syscall
+	
 	j	rp_for_incremento
 
-valor_imediato:
-
+zero_printar:
+	la	$a0, zero
+	li	$v0, 4
+	syscall
 	j	rp_for_incremento
 
-endereco:
-
+at_printar:
+	la	$a0, at
+	li	$v0, 4
+	syscall
 	j	rp_for_incremento
-	
+
+v0_printar:
+	la	$a0, v0
+	li	$v0, 4
+	syscall
+	j	rp_for_incremento
+
+v1_printar:
+	la	$a0, v1
+	li	$v0, 4
+	syscall
+	j	rp_for_incremento
+
+a0_printar:
+	la	$a0, a0
+	li	$v0, 4
+	syscall
+	j	rp_for_incremento
+
+a1_printar:
+	la	$a0, a1
+	li	$v0, 4
+	syscall
+	j	rp_for_incremento
+
+a2_printar:
+	la	$a0, a2
+	li	$v0, 4
+	syscall
+	j	rp_for_incremento
+
+a3_printar:
+	la	$a0, a3
+	li	$v0, 4
+	syscall
+	j	rp_for_incremento
+
+t0_printar:
+	la	$a0, t0
+	li	$v0, 4
+	syscall
+	j	rp_for_incremento
+
+t1_printar:
+	la	$a0, t1
+	li	$v0, 4
+	syscall
+	j	rp_for_incremento
+
+t2_printar:
+	la	$a0, t2
+	li	$v0, 4
+	syscall
+	j	rp_for_incremento
+
+t3_printar:
+	la	$a0, t3
+	li	$v0, 4
+	syscall
+	j	rp_for_incremento
+
+t4_printar:
+	la	$a0, t4
+	li	$v0, 4
+	syscall
+	j	rp_for_incremento
+
+t5_printar:
+	la	$a0, t5
+	li	$v0, 4
+	syscall
+	j	rp_for_incremento
+
+t6_printar:
+	la	$a0, t6
+	li	$v0, 4
+	syscall
+	j	rp_for_incremento
+
+t7_printar:
+	la	$a0, t7
+	li	$v0, 4
+	syscall
+	j	rp_for_incremento
+
+s0_printar:
+	la	$a0, s0
+	li	$v0, 4
+	syscall
+	j	rp_for_incremento
+
+s1_printar:
+	la	$a0, s1
+	li	$v0, 4
+	syscall
+	j	rp_for_incremento
+
+s2_printar:
+	la	$a0, s2
+	li	$v0, 4
+	syscall
+	j	rp_for_incremento
+
+s3_printar:
+	la	$a0, s3
+	li	$v0, 4
+	syscall
+	j	rp_for_incremento
+
+s4_printar:
+	la	$a0, s4
+	li	$v0, 4
+	syscall
+	j	rp_for_incremento
+
+s5_printar:
+	la	$a0, s5
+	li	$v0, 4
+	syscall
+	j	rp_for_incremento
+
+s6_printar:
+	la	$a0, s6
+	li	$v0, 4
+	syscall
+	j	rp_for_incremento
+
+s7_printar:
+	la	$a0, s7
+	li	$v0, 4
+	syscall
+	j	rp_for_incremento
+
+t8_printar:
+	la	$a0, t8
+	li	$v0, 4
+	syscall
+	j	rp_for_incremento
+
+t9_printar:
+	la	$a0, t9
+	li	$v0, 4
+	syscall
+	j	rp_for_incremento
+
+k0_printar:
+	la	$a0, k0
+	li	$v0, 4
+	syscall
+	j	rp_for_incremento
+
+k1_printar:
+	la	$a0, k1
+	li	$v0, 4
+	syscall
+	j	rp_for_incremento
+
+gp_printar:
+	la	$a0, gp
+	li	$v0, 4
+	syscall
+	j	rp_for_incremento
+
+sp_printar:
+	la	$a0, sp
+	li	$v0, 4
+	syscall
+	j	rp_for_incremento
+
+fp_printar:
+	la	$a0, fp
+	li	$v0, 4
+	syscall
+	j	rp_for_incremento
+
+ra_printar:
+	la	$a0, ra
+	li	$v0, 4
+	syscall
+	j	rp_for_incremento
+
+
+
+
+#########################################################################################################
 rp_for_incremento:
 # faca o ingcremento das variaveis do laco for
+	li	$a0, 10 #imprimma \n
+	li	$v0, 11
+	syscall
+	
             addiu   	$s0, $s0, 4             # incrementamos o número do campo
             
-            ll      	$s1, endereco_da_instrucao	# incrementamos o endereco do programa, que inicia em 0x00400000
+            ll      	$s1, pc	# incrementamos o endereco do programa, que inicia em 0x00400000
             add 	$s1, $s1, 4
-            sw 	$s1, endereco_da_instrucao
+            sw 	$s1, pc
             
 rp_for_condicao:
 # teste a condicao do laco de repeticao
@@ -528,7 +1114,7 @@ buffer_escrita: 	.space 32
 
 str_erro_abertura_arquivo: .asciiz "[ERRO] O arquivo não pôde ser aberto\n"
 str_erro_leitura_registro: .asciiz "[ERRO] Erro de leitura do arquivo\n"
-str_instrucao_desconhecida: .asciiz "[ERRO] Erro instrucão desconhecida\n"
+str_instrucao_desconhecida: .asciiz "[ERRO] Erro instrucão desconhecida"
 
 campos_mascaras:
 mascara_ID: 	.word 0xFF000000                    # 0
@@ -545,7 +1131,7 @@ shampt: 		.word 0
 funct: 		.word 0
 valor_imediato: 	.word 0
 endereco_imediato: 	.word 0
-endereco_da_instrucao: 	.word 0x00400000
+pc: 		.word 0x00400000
 
 zero:		.asciiz "$zero "
 at:		.asciiz "$at "
@@ -580,8 +1166,12 @@ sp:		.asciiz "$sp "
 fp:		.asciiz "$fp "
 ra:		.asciiz "$ra "
 
-
+mul_instrucao:	.asciiz "mul "
+syscall_instrucao: 	.asciiz "syscall"
 add_instrucao:	.asciiz "add "
+addiu_instrucao:	.asciiz "addiu "
+addu_instrucao:	.asciiz "addu "
+addi_instrucao:	.asciiz "addi "
 sub_instrucao:	.asciiz "sub "
 and_instrucao:	.asciiz "and "
 or_instrucao:	.asciiz "or "
@@ -602,6 +1192,8 @@ sltiu_instrucao:	.asciiz "sltiu "
 j_instrucao:	.asciiz "j "
 jal_instrucao:	.asciiz "jal "
 
+abre_parenteses: 	.asciiz "("
+fecha_parenteses:	.asciiz ")"
 
 
 

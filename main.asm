@@ -588,7 +588,7 @@ printar_valor_imn:
 	li	$v0, 34
 	syscall
 	
-	j	printar_virgula
+	j	caracteres_especiais
 
 printar_endereco_imn:
 	addi	$t5, $t5, 1 # iterador++
@@ -613,7 +613,15 @@ printar_endereco:
 # tem que terminar de calcular este valor
 	addi	$t5, $t5, 1
 	
-	ll	$a0, endereco_imediato
+	ll	$t6, pc
+	addi	$t6, $t6, 4 # pc + 4
+	li	$t4, 0xf0000000 # mascaara dos 4 bits mais significativos
+	and	$t6, $t6, $t4 # faça uma and do pc +4 e mantenha os 4 bits mais significativos
+	
+	ll	$t7, endereco_imediato
+	#sll	$t7, $t7, 2 # faça um deslocamoento logico a esquera de 2 bits
+	
+	or	$a0, $t6, $t7 # descubra o endereço
 	li	$v0, 34
 	syscall
 	
@@ -623,202 +631,225 @@ zero_printar:
 	la	$a0, zero
 	li	$v0, 4
 	syscall
-	j	printar_virgula
+	j	caracteres_especiais
 
 at_printar:
 	la	$a0, at
 	li	$v0, 4
 	syscall
-	j	printar_virgula
+	j	caracteres_especiais
 
 v0_printar:
 	la	$a0, v0
 	li	$v0, 4
 	syscall
-	j	printar_virgula
+	j	caracteres_especiais
 
 v1_printar:
 	la	$a0, v1
 	li	$v0, 4
 	syscall
-	j	printar_virgula
+	j	caracteres_especiais
 
 a0_printar:
 	la	$a0, a0
 	li	$v0, 4
 	syscall
-	j	printar_virgula
+	j	caracteres_especiais
 
 a1_printar:
 	la	$a0, a1
 	li	$v0, 4
 	syscall
-	j	printar_virgula
+	j	caracteres_especiais
 
 a2_printar:
 	la	$a0, a2
 	li	$v0, 4
 	syscall
-	j	printar_virgula
+	j	caracteres_especiais
 
 a3_printar:
 	la	$a0, a3
 	li	$v0, 4
 	syscall
-	j	printar_virgula
+	j	caracteres_especiais
 
 t0_printar:
 	la	$a0, t0
 	li	$v0, 4
 	syscall
-	j	printar_virgula
+	j	caracteres_especiais
 
 t1_printar:
 	la	$a0, t1
 	li	$v0, 4
 	syscall
-	j	printar_virgula
+	j	caracteres_especiais
 
 t2_printar:
 	la	$a0, t2
 	li	$v0, 4
 	syscall
-	j	printar_virgula
+	j	caracteres_especiais
 
 t3_printar:
 	la	$a0, t3
 	li	$v0, 4
 	syscall
-	j	printar_virgula
+	j	caracteres_especiais
 
 t4_printar:
 	la	$a0, t4
 	li	$v0, 4
 	syscall
-	j	printar_virgula
+	j	caracteres_especiais
 
 t5_printar:
 	la	$a0, t5
 	li	$v0, 4
 	syscall
-	j	printar_virgula
+	j	caracteres_especiais
 
 t6_printar:
 	la	$a0, t6
 	li	$v0, 4
 	syscall
-	j	printar_virgula
+	j	caracteres_especiais
 
 t7_printar:
 	la	$a0, t7
 	li	$v0, 4
 	syscall
-	j	printar_virgula
+	j	caracteres_especiais
 
 s0_printar:
 	la	$a0, s0
 	li	$v0, 4
 	syscall
-	j	printar_virgula
+	j	caracteres_especiais
 
 s1_printar:
 	la	$a0, s1
 	li	$v0, 4
 	syscall
-	j	printar_virgula
+	j	caracteres_especiais
 
 s2_printar:
 	la	$a0, s2
 	li	$v0, 4
 	syscall
-	j	printar_virgula
+	j	caracteres_especiais
 
 s3_printar:
 	la	$a0, s3
 	li	$v0, 4
 	syscall
-	j	printar_virgula
+	j	caracteres_especiais
 
 s4_printar:
 	la	$a0, s4
 	li	$v0, 4
 	syscall
-	j	printar_virgula
+	j	caracteres_especiais
 
 s5_printar:
 	la	$a0, s5
 	li	$v0, 4
 	syscall
-	j	printar_virgula
+	j	caracteres_especiais
 
 s6_printar:
 	la	$a0, s6
 	li	$v0, 4
 	syscall
-	j	printar_virgula
+	j	caracteres_especiais
 
 s7_printar:
 	la	$a0, s7
 	li	$v0, 4
 	syscall
-	j	printar_virgula
+	j	caracteres_especiais
 
 t8_printar:
 	la	$a0, t8
 	li	$v0, 4
 	syscall
-	j	printar_virgula
+	j	caracteres_especiais
 
 t9_printar:
 	la	$a0, t9
 	li	$v0, 4
 	syscall
-	j	printar_virgula
+	j	caracteres_especiais
 
 k0_printar:
 	la	$a0, k0
 	li	$v0, 4
 	syscall
-	j	printar_virgula
+	j	caracteres_especiais
 
 k1_printar:
 	la	$a0, k1
 	li	$v0, 4
 	syscall
-	j	printar_virgula
+	j	caracteres_especiais
 
 gp_printar:
 	la	$a0, gp
 	li	$v0, 4
 	syscall
-	j	printar_virgula
+	j	caracteres_especiais
 
 sp_printar:
 	la	$a0, sp
 	li	$v0, 4
 	syscall
-	j	printar_virgula
+	j	caracteres_especiais
 
 fp_printar:
 	la	$a0, fp
 	li	$v0, 4
 	syscall
-	j	printar_virgula
+	j	caracteres_especiais
 
 ra_printar:
 	la	$a0, ra
 	li	$v0, 4
 	syscall
-	j	printar_virgula
+	j	caracteres_especiais
 
-printar_virgula:
+caracteres_especiais:
 	beq	$t9, 3, rp_for_incremento # se a instrução for jr, ele já printou o rs e vai para a próxima instrução
 	
-	la	$a0, virgula
-	li	$v0, 4
-	syscall
+	beq	$t5, 1, printar_virgula # printou o primeiro registrador e printa a vírgula em seguida 
+	beq	$t5, 2, abrir_parentestes_ou_virgula
+	beq	$t5, 3, fechar_parentestes_incrementar
 	
-	j 	while_condicao
+	abrir_parentestes_ou_virgula: 
+		bne	$t9, 2, printar_virgula
+		
+	printar_abrir_parenteses:
+		la	$a0, abre_parenteses
+		li	$v0, 4
+		syscall
+		
+		j 	while_condicao
+	
+	printar_virgula:
+		la	$a0, virgula
+		li	$v0, 4
+		syscall
+		
+		j 	while_condicao
+	
+	fechar_parentestes_incrementar:
+		bne	$t9, 2, while_condicao
+		
+		la	$a0, fecha_parenteses
+		li	$v0, 4
+		syscall
+		
 
 while_condicao: 
 	beq	$t5, 1, printar_segundo_elemento 
@@ -1036,11 +1067,3 @@ fecha_parenteses:	.asciiz ")"
 virgula:		.asciiz ", "
 
 
-
-
-
-
-
-
-
-      
